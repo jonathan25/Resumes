@@ -1,0 +1,175 @@
+﻿@model Resumes.Models.Person
+@using HeyRed.MarkdownSharp
+
+@{
+    ViewBag.Title = "Details";
+}
+<h1>
+    @Model.Name
+    <small><a class="glyphicon glyphicon-pencil btn btn-link" href="@Url.Action("Edit","People", new { id = Model.Id })"></a></small>
+    <br>
+    <small>
+        <a href="mailto:@Model.Email">@Model.Email</a>
+    </small>
+</h1>
+<hr />
+@{Html.RenderAction("Add", "Jobs", new { id = Model.Id });}
+<hr />
+@if (!Model.Jobs.Any())
+{
+    <div class="row">
+        <div class="col-md-4 col-md-offset-4">
+            <h3 class="text-center">This person doesn't have any jobs.</h3>
+        </div>
+    </div>
+    <hr />
+}
+else
+{
+    foreach (var job in Model.Jobs)
+    {
+        Html.RenderAction("EditablePanel", "Jobs", new { id = job.Id });
+    }
+}
+
+
+<div class="modal fade" id="warning-modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">Are you sure to delete this job?</h4>
+            </div>
+            <div class="modal-body">
+                <p><strong><span id="modal-title-job"></span></strong><br />
+                <small><span id="modal-date-job"></span></small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button id="delete-button" type="button" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.onload = function () {
+        /*$('#panel-id-7');
+        $(document).on("click", "#button-edit-7", function (event) {
+            console.log(this);
+        });*/
+
+        /*$('#form-7').submit(function (event) {
+
+        });*/
+
+        var buttons = [];
+        var forms = [];
+        $('.btn-default').each(function () {
+            var button = this.id.split('-');
+            var id = button.pop();
+
+            if (isInt(id) && button.join('-') == "button-edit") {
+                buttons.push({
+                    'id': "#" + this.id,
+                    'number': id,
+                    'deleteButton': '#button-delete-' + id
+                });
+                forms.push({
+                    'id': "#form-" + id,
+                    'number': id,
+                    'cancelId': '#cancel-edit-' + id,
+                    'descriptionInput': '#description-form-' + id,
+                    'titleInput': '#title-form-' + id,
+                    'dateInput': '#date-form-' + id,
+                });
+            }
+        });
+
+        pendingDelete = NaN;
+        $('#delete-button').click(function (event) {
+            $.ajax({
+                type: "POST",
+                url: '@Url.Action("DeleteJob", "Jobs")',
+                data: { 'id': pendingDelete },
+                datatype: "json", // refer notes below
+                success: function (msg, status, jqXHR) {
+                    console.log(msg);
+                },
+                error: function () {
+                    console.log("delete error");
+                }
+            });
+            $('#panel-' + pendingDelete).remove();
+            $('#warning-modal').modal('hide');
+            pendingDelete = NaN;
+        });
+
+        $(buttons).each(function (index) {
+            $(buttons[index].deleteButton).click(function (event) {
+                var id = buttons[index].number;
+                $('#modal-title-job').text($('#title-' + id).text());
+                $('#modal-date-job').text($('#date-' + id).text());
+                pendingDelete = id;
+            });
+            $(buttons[index].id).click(function (event) {
+                var id = buttons[index].number;
+                $('#panel-edit-body-' + id).removeClass('hidden');
+
+                $('#panel-default-heading-' + id).addClass('hidden');
+                $('#panel-editing-heading-' + id).removeClass('hidden');
+                $('#panel-' + id).removeClass("panel-default").addClass("panel-warning");
+                $('#panel-view-body-' + id).addClass('hidden');
+            });
+        });
+
+        $(forms).each(function (index) {
+            console.log(forms[index].cancelId);
+            $(forms[index].id).submit(function (event) {
+                event.preventDefault();
+                var formData = $(forms[index].id).serialize();
+                $.ajax({
+                    type: "POST",
+                    url: '@Url.Action("EditablePanel", "Jobs")',
+                    data: formData,
+                    datatype: "json", // refer notes below
+                    success: function (msg, status, jqXHR) {
+                        reloadPanel(msg, forms[index]);
+                    },
+                    error: function () {
+                        console.log("error");
+                    }
+                });
+            });
+            $(forms[index].cancelId).click(function (event) {
+                console.log("heh");
+                event.preventDefault();
+                resetPanel(forms[index].number);
+            });
+
+        });
+
+        function resetPanel(id) {
+            $('#panel-edit-body-' + id).addClass('hidden');
+            $('#panel-default-heading-' + id).removeClass('hidden');
+            $('#panel-editing-heading-' + id).addClass('hidden');
+            $('#panel-' + id).addClass("panel-default").removeClass("panel-warning");
+            $('#panel-view-body-' + id).removeClass('hidden');
+        }
+
+        function reloadPanel(json, form) {
+            var id = json.id;
+            resetPanel(id);
+            $('#title-' + id).text(json.title);
+            $('#date-' + id).text(json.dateFormatted);
+            $('#panel-view-body-' + id).html(json.description);
+        }
+
+        function isInt(value) {
+            return !isNaN(value) &&
+                parseInt(Number(value)) == value &&
+                !isNaN(parseInt(value, 10));
+        }
+
+    };
+</script>
